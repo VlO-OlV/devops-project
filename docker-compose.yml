@@ -1,0 +1,47 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - backend
+
+  com-control:  
+    image: 711387108646.dkr.ecr.us-east-1.amazonaws.com/hive-emulator/com-control
+    container_name: com-control
+    restart: always
+    environment:
+      Redis__ConnectionString: "redis:6379"
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+    depends_on:
+      - redis
+
+  hive-mind:
+    image: 711387108646.dkr.ecr.us-east-1.amazonaws.com/hive-emulator/hive-mind
+    container_name: hive-mind
+    restart: always
+    networks:
+      - backend
+    depends_on:
+      - com-control
+
+  map-client:
+    image: 711387108646.dkr.ecr.us-east-1.amazonaws.com/hive-emulator/map-client
+    container_name: map-client
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./config.json:/usr/share/nginx/html/config.json:ro
+    networks:
+      - backend
+    depends_on:
+      - com-control
+
+networks:  
+  backend:
