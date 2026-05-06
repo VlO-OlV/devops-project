@@ -5,64 +5,18 @@ on:
     branches:
       - main
       - dev
+    paths:
+      - 'src/CommunicationControl/**'
+      - 'src/MapClient/**'
+      - '.github/workflows/**'
     workflow_dispatch:
 
 env:
-  AWS_REGION: us-east-1
   ECR_REPOSITORY_COM_CONTROL: hive-emulator/com-control
   ECR_REPOSITORY_MAP_CLIENT: hive-emulator/map-client
   ECR_REPOSITORY_HIVE_MIND: hive-emulator/hive-mind
 
 jobs:
-  build-com-control:
-    name: Com Control - build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-          
-      - name: Build .NET App
-        run: |
-          cd src/CommunicationControl
-          dotnet publish -c Release -p:PublishProfile=FolderProfile -o ./published DevOpsProject/DevOpsProject.CommunicationControl.API.csproj
-
-  build-hive-mind:
-    name: Hive Mind - build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-          
-      - name: Build .NET App
-        run: |
-          cd src/CommunicationControl/DevOpsProject.HiveMind.API
-          dotnet publish -c Release -p:PublishProfile=FolderProfile -o ./published DevOpsProject.HiveMind.API.csproj
-
-  build-map-client:
-    name: Map Client - build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'latest'
-          
-      - name: Build Node App
-        run: |
-          cd src/MapClient
-          npm install
-          npm run build
-
   docker-com-control:
     name: Com Control - docker build and push
     runs-on: ubuntu-latest
@@ -80,7 +34,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -114,7 +68,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -148,7 +102,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -177,7 +131,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -199,7 +153,7 @@ jobs:
             --comment "Deploy new Docker image from GitHub Actions" \
             --parameters 'commands=[
               "cd /home/lab",
-              "aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin '"$ECR_REGISTRY"'",
+              "aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin '"$ECR_REGISTRY"'",
               "docker pull '"$COM_CONTROL_IMAGE_URI"'",
               "docker pull '"$HIVE_MIND_IMAGE_URI"'",
               "docker pull '"$MAP_CLIENT_IMAGE_URI"'",
