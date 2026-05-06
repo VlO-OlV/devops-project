@@ -200,6 +200,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --comment "Deploy new Docker image from GitHub Actions" \
             --parameters 'commands=[
+              "cd /home/lab",
               "aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin '"$ECR_REGISTRY"'",
               "docker pull '"$COM_CONTROL_IMAGE_URI"'",
               "docker pull '"$HIVE_MIND_IMAGE_URI"'",
