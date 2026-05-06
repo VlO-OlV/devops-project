@@ -69,6 +69,8 @@ jobs:
     name: Com Control - docker build and push
     runs-on: ubuntu-latest
     needs: build-com-control
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
     outputs:
       image_uri: ${{ steps.build-image.outputs.image }}
     steps:
@@ -101,6 +103,8 @@ jobs:
     name: Hive Mind - docker build and push
     runs-on: ubuntu-latest
     needs: build-hive-mind
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
     outputs:
       image_uri: ${{ steps.build-image.outputs.image }}
     steps:
@@ -133,6 +137,8 @@ jobs:
     name: Map Client - docker build and push
     runs-on: ubuntu-latest
     needs: build-map-client
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
     outputs:
       image_uri: ${{ steps.build-image.outputs.image }}
     steps:
