@@ -1,0 +1,218 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY_COM_CONTROL: hive-emulator/com-control
+  ECR_REPOSITORY_MAP_CLIENT: hive-emulator/map-client
+  ECR_REPOSITORY_HIVE_MIND: hive-emulator/hive-mind
+
+jobs:
+  build-com-control:
+    name: Com Control - build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+          
+      - name: Build .NET App
+        run: |
+          cd src/CommunicationControl
+          dotnet publish -c Release -p:PublishProfile=FolderProfile -o ./published DevOpsProject/DevOpsProject.CommunicationControl.API.csproj
+
+  build-hive-mind:
+    name: Hive Mind - build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+          
+      - name: Build .NET App
+        run: |
+          cd src/CommunicationControl/DevOpsProject.HiveMind.API
+          dotnet publish -c Release -p:PublishProfile=FolderProfile -o ./published DevOpsProject.HiveMind.API.csproj
+
+  build-map-client:
+    name: Map Client - build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'latest'
+          
+      - name: Build Node App
+        run: |
+          cd src/MapClient
+          npm install
+          npm run build
+
+  docker-com-control:
+    name: Com Control - docker build and push
+    runs-on: ubuntu-latest
+    needs: build-com-control
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
+    outputs:
+      image_uri: ${{ steps.build-image.outputs.image }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+        run: |
+          cd src/CommunicationControl
+          docker build --platform linux/amd64 --provenance false -t $ECR_REGISTRY/$ECR_REPOSITORY_COM_CONTROL:$IMAGE_TAG -f DevOpsProject/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_COM_CONTROL:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_COM_CONTROL:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  docker-hive-mind:
+    name: Hive Mind - docker build and push
+    runs-on: ubuntu-latest
+    needs: build-hive-mind
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
+    outputs:
+      image_uri: ${{ steps.build-image.outputs.image }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+        run: |
+          cd src/CommunicationControl
+          docker build --platform linux/amd64 --provenance false -t $ECR_REGISTRY/$ECR_REPOSITORY_HIVE_MIND:$IMAGE_TAG -f DevOpsProject.HiveMind.API/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_HIVE_MIND:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_HIVE_MIND:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  docker-map-client:
+    name: Map Client - docker build and push
+    runs-on: ubuntu-latest
+    needs: build-map-client
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
+    outputs:
+      image_uri: ${{ steps.build-image.outputs.image }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+        run: |
+          cd src/MapClient
+          docker build --platform linux/amd64 --provenance false -t $ECR_REGISTRY/$ECR_REPOSITORY_MAP_CLIENT:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_MAP_CLIENT:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_MAP_CLIENT:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: [docker-com-control, docker-hive-mind, docker-map-client]
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Execute deployment commands via AWS SSM
+        env:
+          INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          COM_CONTROL_IMAGE_URI: ${{ needs.docker-com-control.outputs.image_uri }}
+          HIVE_MIND_IMAGE_URI: ${{ needs.docker-hive-mind.outputs.image_uri }}
+          MAP_CLIENT_IMAGE_URI: ${{ needs.docker-map-client.outputs.image_uri }}
+        run: |
+          echo "Sending SSM command to instance $INSTANCE_ID..."
+          
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy new Docker image from GitHub Actions" \
+            --parameters 'commands=[
+              "cd /home/lab",
+              "aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin '"$ECR_REGISTRY"'",
+              "docker pull '"$COM_CONTROL_IMAGE_URI"'",
+              "docker pull '"$HIVE_MIND_IMAGE_URI"'",
+              "docker pull '"$MAP_CLIENT_IMAGE_URI"'",
+              "docker compose up -d",
+            ]' \
+            --query "Command.CommandId" \
+            --output text)
+          
+          echo "Command sent. Command ID: $COMMAND_ID"
+          echo "Waiting for execution to complete..."
+          
+          aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID"
+            
+          echo "Deployment script executed successfully!"
