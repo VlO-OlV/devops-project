@@ -181,9 +181,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Execute deployment commands via AWS SSM
         env:
           INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           COM_CONTROL_IMAGE_URI: ${{ needs.docker-com-control.outputs.image_uri }}
           HIVE_MIND_IMAGE_URI: ${{ needs.docker-hive-mind.outputs.image_uri }}
           MAP_CLIENT_IMAGE_URI: ${{ needs.docker-map-client.outputs.image_uri }}
@@ -195,7 +200,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --comment "Deploy new Docker image from GitHub Actions" \
             --parameters 'commands=[
-              "aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin '"$IMAGE_URI"'",
+              "aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin '"$ECR_REGISTRY"'",
               "docker pull '"$COM_CONTROL_IMAGE_URI"'",
               "docker pull '"$HIVE_MIND_IMAGE_URI"'",
               "docker pull '"$MAP_CLIENT_IMAGE_URI"'",
