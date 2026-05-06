@@ -14,11 +14,29 @@ env:
   ECR_REPOSITORY_HIVE_MIND: hive-emulator/hive-mind
 
 jobs:
+  sast:
+    name: Static Application Security Testing
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: 'csharp, javascript'
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
 
   build-com-control:
     name: Com Control - build
     runs-on: ubuntu-latest
-    # needs: sast
+    needs: sast
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +53,7 @@ jobs:
   build-hive-mind:
     name: Hive Mind - build
     runs-on: ubuntu-latest
+    needs: sast
     steps:
       - uses: actions/checkout@v4
 
@@ -51,6 +70,7 @@ jobs:
   build-map-client:
     name: Map Client - build
     runs-on: ubuntu-latest
+    needs: sast
     steps:
       - uses: actions/checkout@v4
 
