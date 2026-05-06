@@ -20,7 +20,6 @@ jobs:
   docker-com-control:
     name: Com Control - docker build and push
     runs-on: ubuntu-latest
-    needs: build-com-control
     environment:
       name: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
     outputs:
@@ -54,7 +53,6 @@ jobs:
   docker-hive-mind:
     name: Hive Mind - docker build and push
     runs-on: ubuntu-latest
-    needs: build-hive-mind
     environment:
       name: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
     outputs:
@@ -88,7 +86,6 @@ jobs:
   docker-map-client:
     name: Map Client - docker build and push
     runs-on: ubuntu-latest
-    needs: build-map-client
     environment:
       name: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
     outputs:
